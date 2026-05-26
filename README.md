@@ -61,8 +61,7 @@ npm run dev
 
 ## Data
 
-- `backend/data/backtest_2024_25.parquet` — real backtest results (2024-2025 NBA Regular)
-Season)
+- `backend/data/backtest_2024_25.parquet` — real backtest results (2024-2025 NBA Regular Season)
 - Synthetic data is auto-generated for the full season so the dashboard has content immediately
 - Replace with a full-season backtest once you have more real data
 
