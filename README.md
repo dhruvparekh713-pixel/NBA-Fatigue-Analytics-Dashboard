@@ -1,13 +1,13 @@
 # NBA Fatigue Dashboard
 
-A full-stack web app visualizing an XGBoost fatigue prediction model's performance on the 2024-25 NBA season. Built by Dhruv Parekh — CMU ECE '28.
+A full-stack web app visualizing the NBA Fatigue Predictor model's (see previous repo) performance on the 2024-25 NBA season. Built by Dhruv Parekh — CMU ECE '28.
 
 ## What it does
 
 - **Dashboard**: Pick any game date → see every game → expand to view per-player fatigue predictions vs actuals
 - **Accuracy Tracker**: Full-season cumulative accuracy chart + segment breakdowns (role, rest, age, minutes)  
 - **Player Profile**: Search any player → season-long fatigue timeline, worst fatigue games, sortable game history
-- **Pictures**: The functioning dashboard with pictures of features and incorporated model usage
+
 <img width="956" height="478" alt="Screenshot 2026-05-26 151420" src="https://github.com/user-attachments/assets/209d9358-c2f6-442b-b023-c01997f953e7" />
 <img width="932" height="425" alt="Screenshot 2026-05-26 151449" src="https://github.com/user-attachments/assets/e6d69ae8-2577-4630-b145-f6c74fab3043" />
 <img width="947" height="472" alt="Screenshot 2026-05-26 151508" src="https://github.com/user-attachments/assets/b150dc3c-10f4-475f-bb40-a01052675814" />
