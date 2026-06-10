@@ -3,7 +3,7 @@ import { api } from '../api'
 import StatsOverview from '../components/StatsOverview'
 import DatePicker from '../components/DatePicker'
 import GameCard from '../components/GameCard'
-import { AlertCircle, Loader2 } from 'lucide-react'
+import { AlertCircle, CheckCircle2, Hash } from 'lucide-react'
 
 function Skeleton() {
   return (
@@ -11,6 +11,31 @@ function Skeleton() {
       {[...Array(3)].map((_, i) => (
         <div key={i} className="card h-20 animate-pulse" />
       ))}
+    </div>
+  )
+}
+
+function SummaryBar({ games, predictions }) {
+  if (predictions.length === 0) return null
+  const correct = predictions.filter(p => p.prediction_correct).length
+  const pct = Math.round(correct / predictions.length * 100)
+  const color = pct >= 60 ? 'text-green-400' : pct >= 50 ? 'text-amber-400' : 'text-red-400'
+
+  return (
+    <div className="flex items-center gap-5 px-1 mb-3 text-sm animate-fade-in">
+      <span className="flex items-center gap-1.5 text-slate-400">
+        <Hash size={13} className="text-slate-600" />
+        <span className="font-semibold text-white">{games.length}</span> games
+      </span>
+      <span className="flex items-center gap-1.5 text-slate-400">
+        <Hash size={13} className="text-slate-600" />
+        <span className="font-semibold text-white">{predictions.length}</span> predictions
+      </span>
+      <span className="flex items-center gap-1.5 text-slate-400">
+        <CheckCircle2 size={13} className="text-slate-600" />
+        Daily accuracy:{' '}
+        <span className={`font-semibold ${color}`}>{pct}%</span>
+      </span>
     </div>
   )
 }
@@ -23,17 +48,14 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
 
-  // Load available dates
   useEffect(() => {
     api.getDates().then(r => {
       const d = r.dates || []
       setDates(d)
-      // Default to last date with games
       if (d.length > 0) setSelectedDate(d[d.length - 1])
     })
   }, [])
 
-  // Load games + predictions when date changes
   useEffect(() => {
     if (!selectedDate) return
     setLoading(true)
@@ -50,32 +72,41 @@ export default function Dashboard() {
       .finally(() => setLoading(false))
   }, [selectedDate])
 
+  const selectedLabel = selectedDate
+    ? new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-US', {
+        weekday: 'long', month: 'long', day: 'numeric',
+      })
+    : ''
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-8">
+
       {/* Hero stats */}
       <section>
         <div className="flex items-baseline gap-3 mb-5">
-          <h1 className="text-2xl font-bold text-white">Model Performance</h1>
-          <span className="text-sm text-slate-500">2024-25 Season</span>
+          <div className="section-header">
+            <h1 className="text-2xl font-bold text-white">Model Performance</h1>
+          </div>
+          <span className="text-sm text-slate-500">2024–25 Season</span>
         </div>
         <StatsOverview />
       </section>
 
-      {/* Date picker */}
+      {/* Game results by date */}
       <section>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-white">Game Results</h2>
-          {selectedDate && (
-            <span className="text-xs text-slate-500">
-              {new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
-            </span>
+          <div className="section-header">
+            <h2 className="text-lg font-semibold text-white">Game Results</h2>
+          </div>
+          {selectedLabel && (
+            <span className="text-xs text-slate-500">{selectedLabel}</span>
           )}
         </div>
-        <div className="card p-4 mb-6 overflow-x-auto">
+
+        <div className="card p-4 mb-5 overflow-x-auto">
           <DatePicker dates={dates} selected={selectedDate} onChange={setSelectedDate} />
         </div>
 
-        {/* Games */}
         {loading ? (
           <Skeleton />
         ) : error ? (
@@ -84,33 +115,12 @@ export default function Dashboard() {
             <span className="text-sm">{error}</span>
           </div>
         ) : games.length === 0 ? (
-          <div className="text-center py-12 text-slate-500">
+          <div className="text-center py-12 text-slate-500 text-sm animate-fade-in">
             No games found for this date.
           </div>
         ) : (
-          <div className="space-y-3">
-            {/* Summary bar */}
-            {predictions.length > 0 && (
-              <div className="flex items-center gap-6 px-1 mb-2">
-                <span className="text-sm text-slate-400">
-                  <span className="text-white font-semibold">{games.length}</span> games
-                </span>
-                <span className="text-sm text-slate-400">
-                  <span className="text-white font-semibold">{predictions.length}</span> predictions
-                </span>
-                <span className="text-sm text-slate-400">
-                  Accuracy:{' '}
-                  <span className={`font-semibold ${
-                    (predictions.filter(p => p.prediction_correct).length / predictions.length) >= 0.6
-                      ? 'text-green-400'
-                      : 'text-amber-400'
-                  }`}>
-                    {Math.round(predictions.filter(p => p.prediction_correct).length / predictions.length * 100)}%
-                  </span>
-                </span>
-              </div>
-            )}
-
+          <div className="space-y-3 animate-fade-in">
+            <SummaryBar games={games} predictions={predictions} />
             {games.map(game => (
               <GameCard
                 key={game.game_id}
