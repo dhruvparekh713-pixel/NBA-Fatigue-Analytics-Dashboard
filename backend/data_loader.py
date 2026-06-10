@@ -160,6 +160,8 @@ def _extend_to_full_season(real_bt: pd.DataFrame) -> pd.DataFrame:
                 is_starter = rng.random() < 0.55
                 age = rng.uniform(21, 38)
 
+                team_abb = home if rng.random() < 0.5 else away
+                opp_abb = away if team_abb == home else home
                 records.append({
                     "GAME_ID": game_id,
                     "PLAYER_ID": hash(player["name"]) % 10_000_000,
@@ -167,7 +169,7 @@ def _extend_to_full_season(real_bt: pd.DataFrame) -> pd.DataFrame:
                     "GAME_DATE": date,
                     "SEASON": "2024-25",
                     "minutes_q4": round(q4_min, 2),
-                    "is_home": float(rng.random() < 0.5),
+                    "is_home": float(team_abb == home),
                     "rest_days": float(rest),
                     "is_back_to_back": float(rest == 0),
                     "START_POSITION": "G" if is_starter else "",
@@ -193,8 +195,8 @@ def _extend_to_full_season(real_bt: pd.DataFrame) -> pd.DataFrame:
                     "fg_pct_dropoff_pred": round(float(rng.normal(-0.01, 0.05)), 4),
                     "fg_pct_rate_actual": round(rng.uniform(0.25, 0.65), 4),
                     "is_starter": is_starter,
-                    "TEAM_ABB": home if rng.random() < 0.5 else away,
-                    "OPP_ABB": away if rng.random() < 0.5 else home,
+                    "TEAM_ABB": team_abb,
+                    "OPP_ABB": opp_abb,
                     "cumulative_minutes_q1q3": round(cum_min, 2),
                 })
 
@@ -257,6 +259,8 @@ def generate_synthetic_data(n_games: int = 600) -> pd.DataFrame:
                 is_starter = rng.random() < 0.55
                 age = rng.uniform(21, 38)
 
+                team_abb = home if rng.random() < 0.5 else away
+                opp_abb = away if team_abb == home else home
                 records.append({
                     "GAME_ID": game_id,
                     "PLAYER_ID": hash(p["name"]) % 10_000_000,
@@ -264,7 +268,7 @@ def generate_synthetic_data(n_games: int = 600) -> pd.DataFrame:
                     "GAME_DATE": date,
                     "SEASON": "2024-25",
                     "minutes_q4": round(q4_min, 2),
-                    "is_home": float(rng.random() < 0.5),
+                    "is_home": float(team_abb == home),
                     "rest_days": float(rest),
                     "is_back_to_back": float(rest == 0),
                     "START_POSITION": "G" if is_starter else "",
@@ -284,8 +288,8 @@ def generate_synthetic_data(n_games: int = 600) -> pd.DataFrame:
                     "ast_actual": max(0, int(rng.integers(0, 5))),
                     "to_actual": max(0, int(rng.integers(0, 3))),
                     "is_starter": is_starter,
-                    "TEAM_ABB": home if rng.random() < 0.5 else away,
-                    "OPP_ABB": away if rng.random() < 0.5 else home,
+                    "TEAM_ABB": team_abb,
+                    "OPP_ABB": opp_abb,
                     "cumulative_minutes_q1q3": round(cum_min, 2),
                     "fg_pct_rate_q1q3": round(rng.uniform(0.3, 0.6), 4),
                     "fg_pct_dropoff_pred": round(float(rng.normal(-0.01, 0.05)), 4),
