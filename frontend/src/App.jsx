@@ -71,7 +71,7 @@ function Footer() {
           {' '}— CMU ECE '28
         </span>
         <a
-          href="https://github.com/dhirp007"
+          href="https://github.com/dhruvparekh713-pixel/NBA-Fatigue-Analytics-Dashboard"
           target="_blank"
           rel="noopener noreferrer"
           className="text-xs text-blue-500 hover:text-blue-400 transition-colors"
