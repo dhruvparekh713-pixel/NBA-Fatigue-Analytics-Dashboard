@@ -59,7 +59,7 @@ export default function PlayerSearch({ onSelect, placeholder = 'Search players..
   return (
     <div ref={ref} className="relative w-full max-w-md">
       <div className="relative">
-        <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+        <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-500" />
         <input
           type="text"
           value={query}
@@ -67,12 +67,12 @@ export default function PlayerSearch({ onSelect, placeholder = 'Search players..
           onFocus={() => results.length > 0 && setOpen(true)}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
-          className="w-full bg-bg-card border border-white/10 rounded-xl pl-9 pr-4 py-2.5 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-500/60 transition-colors"
+          className="w-full bg-court-surface border border-court-line rounded-xl pl-9 pr-4 py-2.5 text-sm text-stone-200 placeholder-stone-500 focus:outline-none focus:border-ember/60 focus:ring-1 focus:ring-ember/30 transition-all"
         />
       </div>
 
       {open && results.length > 0 && (
-        <div className="absolute z-50 w-full mt-1.5 bg-bg-elevated border border-white/10 rounded-xl shadow-2xl overflow-hidden animate-fade-in">
+        <div className="absolute z-50 w-full mt-1.5 bg-court-elevated border border-court-line rounded-xl shadow-2xl overflow-hidden animate-fade-in">
           {results.map((name, i) => (
             <button
               key={name}
@@ -80,14 +80,14 @@ export default function PlayerSearch({ onSelect, placeholder = 'Search players..
               onMouseEnter={() => setFocusedIdx(i)}
               className={`w-full px-4 py-2.5 text-left text-sm transition-colors ${
                 i === focusedIdx
-                  ? 'bg-blue-600/20 text-white'
-                  : 'text-slate-300 hover:bg-white/5 hover:text-white'
+                  ? 'bg-ember/15 text-ember-bright'
+                  : 'text-stone-300 hover:bg-white/5 hover:text-white'
               }`}
             >
               {name}
             </button>
           ))}
-          <p className="px-4 py-1.5 text-[10px] text-slate-600 border-t border-white/5">
+          <p className="px-4 py-1.5 text-[10px] text-stone-600 border-t border-court-line">
             ↑↓ navigate · Enter select · Esc close
           </p>
         </div>

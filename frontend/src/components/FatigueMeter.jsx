@@ -2,9 +2,9 @@ export default function FatigueMeter({ score, size = 'md' }) {
   const pct = Math.min(100, Math.max(0, score ?? 0))
 
   const color =
-    pct >= 70 ? '#ef4444' :
-    pct >= 45 ? '#f59e0b' :
-    '#22c55e'
+    pct >= 70 ? '#ff5630' :
+    pct >= 45 ? '#fbbf24' :
+    '#34d399'
 
   const label =
     pct >= 70 ? 'High' :
@@ -12,10 +12,11 @@ export default function FatigueMeter({ score, size = 'md' }) {
     'Low'
 
   const labelClass =
-    pct >= 70 ? 'text-red-400' :
-    pct >= 45 ? 'text-amber-400' :
-    'text-green-400'
+    pct >= 70 ? 'text-ember-bright' :
+    pct >= 45 ? 'text-gold' :
+    'text-emerald-400'
 
+  const isHot = pct >= 70
   const heights = { sm: 'h-1.5', md: 'h-2', lg: 'h-2.5' }
   const textSizes = { sm: 'text-xs', md: 'text-xs', lg: 'text-sm' }
 
@@ -32,12 +33,16 @@ export default function FatigueMeter({ score, size = 'md' }) {
           {label}
         </span>
       </div>
-      {/* Gradient progress bar using clipPath — always 100% wide, clipped to pct% */}
-      <div className={`w-full ${heights[size]} rounded-full bg-white/10 relative overflow-hidden`}>
+      {/* Gradient fresh→gold→ember bar, clipped to pct%. Pulses when hot. */}
+      <div
+        className={`w-full ${heights[size]} rounded-full bg-white/10 relative overflow-hidden ${
+          isHot ? 'animate-ember-pulse' : ''
+        }`}
+      >
         <div
           className="absolute inset-0 transition-all duration-700 ease-out"
           style={{
-            background: 'linear-gradient(to right, #22c55e 0%, #f59e0b 45%, #ef4444 100%)',
+            background: 'linear-gradient(to right, #34d399 0%, #fbbf24 45%, #ff5630 100%)',
             clipPath: `inset(0 ${100 - pct}% 0 0 round 9999px)`,
           }}
         />

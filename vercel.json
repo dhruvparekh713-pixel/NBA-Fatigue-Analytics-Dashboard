@@ -2,10 +2,10 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "RAILWAY_BACKEND_URL/api/:path*"
+      "destination": "https://web-production-86e5e.up.railway.app"
     }
   ],
-  "buildCommand": "cd frontend && npm install && npm run build",
-  "outputDirectory": "frontend/dist",
-  "installCommand": "cd frontend && npm install"
+  "buildCommand": "npm install && npm run build",
+  "outputDirectory": "dist",
+  "installCommand": "npm install"
 }

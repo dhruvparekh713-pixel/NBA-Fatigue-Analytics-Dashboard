@@ -4,21 +4,41 @@ export default {
   theme: {
     extend: {
       colors: {
+        // COURTSIDE — warm hardwood & ember palette
+        court: {
+          black: '#0d0a08',
+          bg: '#100c0a',
+          surface: '#1a1410',
+          elevated: '#241c16',
+          line: '#3a2f28',
+        },
+        ember: {
+          DEFAULT: '#ff6b35',
+          bright: '#ff8c42',
+          deep: '#e8551f',
+        },
+        gold: {
+          DEFAULT: '#fbbf24',
+          bright: '#fcd34d',
+        },
+        // Legacy aliases → mapped to court tones so any stray bg-bg-* keeps working
         bg: {
-          primary: '#0f1117',
-          secondary: '#1a1d29',
-          card: '#1e2235',
-          elevated: '#252a3a',
+          primary: '#100c0a',
+          secondary: '#1a1410',
+          card: '#1a1410',
+          elevated: '#241c16',
         },
         accent: {
-          green: '#22c55e',
-          red: '#ef4444',
-          amber: '#f59e0b',
-          blue: '#3b82f6',
+          green: '#34d399',
+          red: '#ff5630',
+          amber: '#fbbf24',
+          blue: '#ff6b35',
         },
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
+        sans: ['Plus Jakarta Sans', 'system-ui', 'sans-serif'],
+        serif: ['Playfair Display', 'Georgia', 'serif'],
+        display: ['Bricolage Grotesque', 'Plus Jakarta Sans', 'system-ui', 'sans-serif'],
         mono: ['JetBrains Mono', 'monospace'],
       },
       keyframes: {
@@ -34,17 +54,34 @@ export default {
           '0%, 100%': { opacity: '1' },
           '50%': { opacity: '0.35' },
         },
+        'ember-pulse': {
+          '0%, 100%': { boxShadow: '0 0 0 0 rgba(255, 107, 53, 0.45)' },
+          '50%': { boxShadow: '0 0 14px 2px rgba(255, 107, 53, 0.65)' },
+        },
+        // Organic liquid-blob morph
+        'blob-morph': {
+          '0%, 100%': { borderRadius: '42% 58% 63% 37% / 41% 44% 56% 59%' },
+          '33%': { borderRadius: '67% 33% 47% 53% / 37% 62% 38% 63%' },
+          '66%': { borderRadius: '38% 62% 56% 44% / 64% 39% 61% 36%' },
+        },
       },
       animation: {
         'fade-in': 'fade-in 0.3s ease-out both',
         'slide-up': 'slide-up 0.4s ease-out both',
         'pulse-slow': 'pulse-slow 2.5s ease-in-out infinite',
+        'ember-pulse': 'ember-pulse 1.8s ease-in-out infinite',
+        'blob-morph': 'blob-morph 18s ease-in-out infinite',
       },
       boxShadow: {
-        'glow-blue': '0 0 24px rgba(59, 130, 246, 0.22)',
-        'glow-green': '0 0 24px rgba(34, 197, 94, 0.22)',
-        'glow-amber': '0 0 24px rgba(245, 158, 11, 0.22)',
-        'glow-red': '0 0 24px rgba(239, 68, 68, 0.22)',
+        'glow-ember': '0 0 24px rgba(255, 107, 53, 0.28)',
+        'glow-gold': '0 0 24px rgba(251, 191, 36, 0.24)',
+        'glow-green': '0 0 24px rgba(52, 211, 153, 0.22)',
+      },
+      backgroundImage: {
+        // Subtle hardwood court-line texture
+        hardwood:
+          'repeating-linear-gradient(90deg, rgba(255,255,255,0.015) 0px, rgba(255,255,255,0.015) 1px, transparent 1px, transparent 64px)',
+        'ember-gold': 'linear-gradient(135deg, #ff6b35, #fbbf24)',
       },
     },
   },

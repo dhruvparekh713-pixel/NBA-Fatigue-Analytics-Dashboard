@@ -14,7 +14,7 @@ export default function DatePicker({ dates, selected, onChange }) {
   }, [selected, dates])
 
   if (dates.length === 0) {
-    return <div className="h-16 animate-pulse rounded-xl bg-bg-card" />
+    return <div className="h-16 animate-pulse rounded-xl bg-court-surface" />
   }
 
   const visible = dates.slice(visibleStart, visibleStart + VISIBLE)
@@ -43,8 +43,8 @@ export default function DatePicker({ dates, selected, onChange }) {
   return (
     <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
       {/* Month label */}
-      <div className="flex items-center gap-1.5 text-slate-400 text-xs shrink-0 mr-1">
-        <Calendar size={13} />
+      <div className="flex items-center gap-1.5 text-stone-400 text-xs shrink-0 mr-1">
+        <Calendar size={13} className="text-ember/70" />
         <span>{fmtMonth(visible[0])}</span>
       </div>
 
@@ -66,14 +66,14 @@ export default function DatePicker({ dates, selected, onChange }) {
               onClick={() => onChange(d)}
               className={`flex flex-col items-center px-3 py-2 rounded-xl text-xs font-medium transition-all shrink-0 ${
                 isSelected
-                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
-                  : 'bg-bg-card hover:bg-bg-elevated text-slate-400 hover:text-slate-200 border border-white/5'
+                  ? 'bg-ember text-court-black shadow-glow-ember'
+                  : 'bg-court-surface hover:bg-court-elevated text-stone-400 hover:text-stone-200 border border-court-line'
               }`}
             >
-              <span className={`text-[10px] uppercase tracking-wider ${isSelected ? 'text-blue-200' : 'text-slate-500'}`}>
+              <span className={`text-[10px] uppercase tracking-wider ${isSelected ? 'text-court-black/70' : 'text-stone-500'}`}>
                 {fmtDay(d)}
               </span>
-              <span className="text-sm font-bold mt-0.5">{fmtDate(d)}</span>
+              <span className="text-sm font-bold mt-0.5 stat-figure">{fmtDate(d)}</span>
             </button>
           )
         })}
@@ -91,7 +91,7 @@ export default function DatePicker({ dates, selected, onChange }) {
       {!isAtLatest && (
         <button
           onClick={jumpToLatest}
-          className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs text-blue-400 hover:bg-blue-600/10 border border-blue-500/25 transition-colors shrink-0"
+          className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs text-gold hover:bg-gold/10 border border-gold/25 transition-colors shrink-0"
           title="Jump to most recent date"
         >
           <ChevronsRight size={12} />

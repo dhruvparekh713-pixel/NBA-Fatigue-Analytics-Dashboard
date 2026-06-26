@@ -6,12 +6,12 @@ import {
 function CustomTooltip({ active, payload, label }) {
   if (!active || !payload?.length) return null
   return (
-    <div className="bg-bg-elevated border border-white/10 rounded-lg px-3 py-2 shadow-xl text-xs">
-      <p className="text-slate-400 mb-1.5">{label}</p>
+    <div className="tooltip-pill text-xs flex items-center gap-2">
+      <span className="text-stone-400">{label}</span>
       {payload.map(p => (
-        <p key={p.dataKey} className="font-semibold" style={{ color: p.color }}>
-          {p.name}: {p.value}%
-        </p>
+        <span key={p.dataKey} className="font-semibold stat-figure" style={{ color: p.color }}>
+          {p.value}%
+        </span>
       ))}
     </div>
   )
@@ -33,28 +33,35 @@ export default function AccuracyChart({ data }) {
       <AreaChart data={formatted} margin={{ top: 8, right: 16, left: -8, bottom: 0 }}>
         <defs>
           <linearGradient id="accuracyGradient" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.28} />
-            <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+            <stop offset="5%" stopColor="#ff6b35" stopOpacity={0.32} />
+            <stop offset="95%" stopColor="#ff6b35" stopOpacity={0} />
           </linearGradient>
+          <linearGradient id="accuracyStroke" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stopColor="#ff6b35" />
+            <stop offset="100%" stopColor="#fbbf24" />
+          </linearGradient>
+          <filter id="emberGlow" x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="0" dy="0" stdDeviation="4" floodColor="#ff6b35" floodOpacity="0.45" />
+          </filter>
         </defs>
         <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
         <XAxis
           dataKey="date"
-          tick={{ fill: '#94a3b8', fontSize: 11 }}
+          tick={{ fill: '#a8a29e', fontSize: 11 }}
           tickLine={false}
           axisLine={false}
           interval={Math.floor(formatted.length / 6)}
         />
         <YAxis
           domain={[40, 80]}
-          tick={{ fill: '#94a3b8', fontSize: 11 }}
+          tick={{ fill: '#a8a29e', fontSize: 11 }}
           tickLine={false}
           axisLine={false}
           tickFormatter={v => `${v}%`}
         />
         <Tooltip content={<CustomTooltip />} />
         <Legend
-          wrapperStyle={{ fontSize: 12, color: '#94a3b8' }}
+          wrapperStyle={{ fontSize: 12, color: '#a8a29e' }}
           iconType="circle"
           iconSize={8}
         />
@@ -62,17 +69,21 @@ export default function AccuracyChart({ data }) {
           y={50}
           stroke="rgba(255,255,255,0.15)"
           strokeDasharray="4 4"
-          label={{ value: '50% baseline', fill: '#64748b', fontSize: 11 }}
+          label={{ value: '50% baseline', fill: '#78716c', fontSize: 11 }}
         />
         <Area
           type="monotone"
           dataKey="cumulative_pct"
           name="Cumulative Accuracy"
-          stroke="#3b82f6"
+          stroke="url(#accuracyStroke)"
           strokeWidth={2.5}
           fill="url(#accuracyGradient)"
+          style={{ filter: 'url(#emberGlow)' }}
           dot={false}
-          activeDot={{ r: 4, fill: '#3b82f6', strokeWidth: 0 }}
+          activeDot={{ r: 4, fill: '#ff6b35', strokeWidth: 0 }}
+          isAnimationActive={true}
+          animationDuration={1100}
+          animationEasing="ease-out"
         />
       </AreaChart>
     </ResponsiveContainer>
