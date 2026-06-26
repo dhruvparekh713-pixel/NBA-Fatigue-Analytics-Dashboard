@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://web-production-86e5e.up.railway.app"
+      "destination": "https://web-production-86e5e.up.railway.app/api:path"
     }
   ],
   "buildCommand": "npm install && npm run build",
