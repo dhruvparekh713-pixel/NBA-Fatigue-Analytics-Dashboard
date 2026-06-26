@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "RAILWAY_BACKEND_URL/api/:path*"
+      "destination": "web-production-86e5e.up.railway.app"
     }
   ],
   "buildCommand": "npm install && npm run build",
