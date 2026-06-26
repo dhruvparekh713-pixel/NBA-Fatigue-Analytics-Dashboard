@@ -66,8 +66,23 @@ def get_games(date: str):
 
     games = []
     for gid, grp in day.groupby("GAME_ID"):
-        home_team = grp["TEAM_ABB"].iloc[0] if "TEAM_ABB" in grp.columns else "HOM"
-        away_team = grp["OPP_ABB"].iloc[0] if "OPP_ABB" in grp.columns else "AWY"
+        # Collect all distinct teams mentioned across TEAM_ABB and OPP_ABB in the group
+        teams_in_game = set()
+        if "TEAM_ABB" in grp.columns:
+            teams_in_game.update(grp["TEAM_ABB"].dropna().unique())
+        if "OPP_ABB" in grp.columns:
+            teams_in_game.update(grp["OPP_ABB"].dropna().unique())
+        teams_in_game.discard("UNK")
+
+        if len(teams_in_game) >= 2:
+            sorted_teams = sorted(teams_in_game)
+            home_team, away_team = sorted_teams[0], sorted_teams[1]
+        elif len(teams_in_game) == 1:
+            home_team = list(teams_in_game)[0]
+            away_team = "UNK"
+        else:
+            home_team, away_team = "HOM", "AWY"
+
         n = len(grp)
         correct = int(grp["prediction_correct"].sum())
         acc = round(correct / n * 100, 1) if n > 0 else 0.0
