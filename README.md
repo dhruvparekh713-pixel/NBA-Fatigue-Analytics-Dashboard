@@ -64,3 +64,6 @@ The XGBoost model predicts Q4 pts/min drop-off from 11 pre-Q4 features:
 - Cumulative minutes Q1-Q3, usage trend, FG% trend
 - Rest days, season minutes load, player age
 - Game pace, score differential entering Q4, home/away, avg MPG
+
+
+Check out the project screenshots in the [NBA Dashboard Deployment Pictures](./Nba-Dashboard-Deployment-Pictures).
