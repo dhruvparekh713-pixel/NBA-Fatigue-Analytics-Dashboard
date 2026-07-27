@@ -5,7 +5,7 @@ import useCountUp from '../hooks/useCountUp'
 import { Stagger, Item, Float } from '../motion/primitives'
 import { Pressable } from '../motion/Pressable'
 import { HandUnderline } from './decor'
-import { TrendingUp, Target, Users, Flame, ArrowUpRight } from 'lucide-react'
+import { TrendingUp, Target, Users, Flame, ArrowUpRight, FlaskConical } from 'lucide-react'
 
 function CountValue({ value, decimals = 0, suffix = '', prefix = '' }) {
   const animated = useCountUp(value, { duration: 1100, decimals })
@@ -97,49 +97,65 @@ export default function StatsOverview() {
   if (!data) return null
 
   const improvSign = data.improvement_pct >= 0 ? '+' : ''
+  const synth = data.synthetic
 
   return (
-    <Stagger className="grid grid-cols-2 md:grid-cols-4 md:auto-rows-fr gap-4">
-      {/* Hero feature: Model Accuracy — large floating tile */}
-      <FeatureTile
-        label="Model Accuracy"
-        value={data.overall_accuracy}
-        decimals={1}
-        suffix="%"
-        sub={`Baseline ${data.baseline_accuracy}% · ${improvSign}${data.improvement_pct}% edge`}
-        icon={TrendingUp}
-        color="green"
-        onClick={goAccuracy}
-      />
-      <StatTile
-        label="Total Predictions"
-        value={data.total_predictions}
-        sub={`across ${data.total_games} games`}
-        icon={Target}
-        color="ember"
-      />
-      <StatTile
-        label="Best Segment"
-        value={data.best_segment}
-        numeric={false}
-        sub={`${improvSign}${data.improvement_pct}% vs baseline`}
-        icon={Flame}
-        color="gold"
-      />
-      <StatTile
-        label="Players Tracked"
-        value={data.total_players}
-        sub="2024–25 season"
-        icon={Users}
-        color="stone"
-      />
-      <StatTile
-        label="Games Logged"
-        value={data.total_games}
-        sub="full season"
-        icon={Target}
-        color="ember"
-      />
-    </Stagger>
+    <div className="space-y-3">
+      <Stagger className="grid grid-cols-2 md:grid-cols-4 md:auto-rows-fr gap-4">
+        {/* Hero: accuracy on REAL backtest rows only */}
+        <FeatureTile
+          label="Model Accuracy — Real Data"
+          value={data.overall_accuracy}
+          decimals={1}
+          suffix="%"
+          sub={`${data.total_predictions.toLocaleString()} real player-games · ${improvSign}${data.improvement_pct} pts over the ${data.baseline_accuracy}% majority-class baseline`}
+          icon={TrendingUp}
+          color="green"
+          onClick={goAccuracy}
+        />
+
+        {/* Synthetic shown alongside, deliberately de-emphasized */}
+        {synth && (
+          <StatTile
+            label="Synthetic Demo Season"
+            value={synth.accuracy_pct}
+            decimals={1}
+            suffix="%"
+            sub={`${synth.total_predictions.toLocaleString()} generated rows — UI demo data, not model skill`}
+            icon={FlaskConical}
+            color="stone"
+          />
+        )}
+
+        <StatTile
+          label="Best Segment"
+          value={data.best_segment}
+          numeric={false}
+          sub="highest real-data accuracy"
+          icon={Flame}
+          color="gold"
+        />
+        <StatTile
+          label="Players Tracked"
+          value={data.total_players}
+          sub="2024–25 season"
+          icon={Users}
+          color="stone"
+        />
+        <StatTile
+          label="Games Logged"
+          value={data.total_games}
+          sub="real + synthetic"
+          icon={Target}
+          color="ember"
+        />
+      </Stagger>
+
+      {data.data_note && (
+        <p className="text-[11px] leading-relaxed text-stone-500 px-1 max-w-3xl">
+          {data.data_note}
+        </p>
+      )}
+    </div>
   )
 }

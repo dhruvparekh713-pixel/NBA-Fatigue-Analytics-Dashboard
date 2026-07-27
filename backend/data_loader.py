@@ -203,6 +203,13 @@ def _extend_to_full_season(real_bt: pd.DataFrame) -> pd.DataFrame:
     synth_df = pd.DataFrame(records)
     synth_df = _add_derived_columns(synth_df)
 
+    # Provenance flag — the headline metrics report real rows only, since
+    # synthetic predictions are built as (truth + noise) and their accuracy
+    # is an artifact of that construction rather than model skill.
+    real_bt = real_bt.copy()
+    real_bt["is_synthetic"] = False
+    synth_df["is_synthetic"] = True
+
     combined = pd.concat([real_bt, synth_df], ignore_index=True)
     combined["GAME_DATE"] = pd.to_datetime(combined["GAME_DATE"])
     combined["date_str"] = combined["GAME_DATE"].dt.strftime("%Y-%m-%d")
@@ -298,4 +305,5 @@ def generate_synthetic_data(n_games: int = 600) -> pd.DataFrame:
 
     df = pd.DataFrame(records)
     df = _add_derived_columns(df)
+    df["is_synthetic"] = True  # this whole path is the no-real-data fallback
     return df

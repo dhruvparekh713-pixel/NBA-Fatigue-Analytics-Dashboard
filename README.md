@@ -25,7 +25,7 @@ Measured on the **787 real player-games** in the backtest (2024-25 season, Oct 2
 |---|---|
 | Directional accuracy (did the model call the sign of the Q4 change?) | **63.2%** |
 | Majority-class baseline (always predict the more common direction) | 55.0% |
-| Lift | **+8.1 pts** |
+| Lift | **+8.2 pts** |
 
 Regression performance on the held-out split (n = 158) is much weaker — the model explains almost none of the variance:
 
@@ -43,12 +43,14 @@ The model gets the *direction* right more often than chance, but its magnitude e
 Predictions are **batch-scored offline**, not computed per request. The model is not in the request path; the API is a read-only analytics layer over materialized results.
 
 ```
-NBA play-by-play
-      ↓  feature extraction (11 pre-Q4 features)
+NBA Stats API  (nba_api)
+      ↓  ml/src/scraper.py     — per-quarter box scores, Parquet cache
+data/box_scores/*.parquet
+      ↓  ml/src/features.py    — 11 pre-Q4 features, 4 targets
 feature_matrix.parquet
-      ↓  XGBoost training, 4 targets
+      ↓  ml/src/model.py       — XGBoost, chronological split
 fatigue_model.pkl
-      ↓  batch scoring (offline)
+      ↓  ml/src/evaluate.py    — batch scoring (offline)
 backtest_2024_25.parquet          ← predictions materialized here
       ↓  loaded into memory at startup
 FastAPI  (Railway)                 ← aggregations computed live per request
@@ -90,9 +92,20 @@ player_age                 minutes_per_game_season_avg
 
 **Hyperparameters:** 500 estimators, `max_depth=4`, `learning_rate=0.05`, `subsample=0.8`, `colsample_bytree=0.8`, `min_child_weight=5`, `reg_alpha=0.1`, `reg_lambda=1.0`, `objective=reg:squarederror`, early stopping at 30 rounds.
 
-**Training data:** 2024-25 season, 629 train / 158 test, per the model artifact's own metadata.
+**Training data:** 629 train / 158 test. The trainer prefers a cross-season split (2022-23 + 2023-24 → held-out 2024-25) and falls back to an 80/20 **chronological** split when only one season is cached. Only 2024-25 is currently scraped, so the fallback is what ran.
 
-> The training and scraping code is not currently in this repo — only the resulting artifacts. Adding it is on the roadmap.
+**The full pipeline lives in [`ml/`](ml/)** — scraper, feature engineering, training, backtesting, visualization, and a prediction CLI. See [ml/README.md](ml/README.md).
+
+```bash
+cd ml
+python predict.py --scrape --seasons 2022-23 2023-24 2024-25   # ~2.5 h, cached & resumable
+python predict.py --features                                    # build feature matrix
+python predict.py --train                                       # train the 4 regressors
+python predict.py --backtest --season 2024-25                   # produce backtest parquet
+python predict.py --player "LeBron James" --minutes-so-far 32 --pace 98 --rest-days 1
+```
+
+> The repo ships a **59-game development cache**, so every step above except `--scrape` runs immediately from a fresh clone. Current metrics come from that cache; the 3-season scrape is the real test.
 
 ## Fatigue risk score
 
@@ -139,14 +152,14 @@ Responses are typed with Pydantic models in [`backend/api/schemas.py`](backend/a
 
 Documented rather than hidden — these are the honest state of the project.
 
-1. **The headline accuracy figure blends synthetic rows.** The overview endpoint currently aggregates all ~12,600 rows and reports ~81.7%. Real-only is 63.2%. Filtering the headline metric to real rows is the next commit.
-2. **The train/test split was not temporal.** `train_seasons` and `test_season` are both `2024-25`, and 629 + 158 = 787 — the entire dataset. The backtest the dashboard renders therefore includes rows the model trained on. A forward-chaining split (train on earlier dates, test on later) is the correct approach for a time-series problem.
+1. ~~**The headline accuracy figure blends synthetic rows.**~~ **Fixed.** Rows now carry an `is_synthetic` flag, and `/api/stats/overview` reports real backtest rows in the headline (63.2%) while returning the synthetic (82.9%) and combined (81.7%) splits alongside. Both are displayed in the UI, with the synthetic figure labelled as an artifact of construction.
+2. **The backtest view mixes train and test rows.** The split itself is sound — the trainer prefers a cross-season split (2022-23 + 2023-24 train, 2024-25 holdout) and falls back to an 80/20 **chronological** split sorted by `GAME_DATE` when only one season is cached. That fallback is what ran, so the 158 test rows are genuinely held out in time. The limitation is downstream: the dashboard renders all 787 backtest rows together, so ~80% of what it displays are rows the model trained on. Reported metrics come from the 158-row holdout; displayed accuracy does not distinguish them.
 3. **The sample is thin.** 787 player-games over nine days, against 11 features. This is the most likely explanation for R² ≈ 0.
 4. **Training objective ≠ evaluation metric.** The model minimizes squared error on a continuous target; the dashboard grades it on the *sign* of that target. Directional accuracy is measured post-hoc, not optimized for.
 5. **The fatigue score is not calibrated or validated.** On real data its correlation with actual Q4 drop-off is **0.032**, and the ordering runs backwards — the "High" band shows a slightly *positive* mean change. Both denominators are also mis-scaled: `36` assumes a player never leaves the floor in Q1–Q3 (real median is 21.8 min), and `7` assumes a rest range the data never exercises (real values are only 0–3).
-6. **Two inconsistent baselines.** `/api/stats/overview` computes an "always predict up" baseline (45.0%), while the Accuracy page hardcodes a 50% coin flip. Neither is the right choice — majority class (55.0%) is.
+6. ~~**Two inconsistent baselines.**~~ **Fixed.** The API previously computed an "always predict up" baseline (45.0%) while the Accuracy page hardcoded a 50% coin flip. Both now use majority class (**55.0%**) — the correct floor for a binary directional call. The old baseline scored *below* chance, which roughly doubled the apparent lift.
 7. **Home/away teams are guessed.** [`get_games`](backend/api/routes.py#L60) sorts the two team abbreviations alphabetically and labels the first as home, so the matchup orientation is frequently wrong.
-8. **No test suite and no CI.**
+8. **No CI, and the API is untested.** [`ml/`](ml/) ships seven verifier scripts — four run offline against the cached data and pass (`test_phase2`, `test_phase2_verify`, `test_phase3_verify`, `test_phase4_verify`); three hit the live NBA API and are unsuitable for automation. `test_phase1` currently **fails**: per-quarter box scores don't reconcile with full-game totals (PTS 14/21, MIN 9/21 on the sample), a boundary-attribution quirk in the NBA API's `range_type=2` mode that [`scraper.py`](ml/src/scraper.py#L64-L69) partially compensates for. Nothing covers the FastAPI layer.
 
 ## Local development
 
@@ -178,10 +191,10 @@ Both deploy automatically on push to `main`.
 
 ## Roadmap
 
-- [ ] Report real-data accuracy in the headline metric; label synthetic rows in the UI
-- [ ] Switch to a majority-class baseline and use it consistently across API and frontend
-- [ ] Commit the scraping and training pipeline
-- [ ] Retrain with a temporal split across multiple seasons
+- [x] Report real-data accuracy in the headline metric; label synthetic rows in the UI
+- [x] Switch to a majority-class baseline and use it consistently across API and frontend
+- [x] Commit the scraping and training pipeline (now in [`ml/`](ml/))
+- [ ] Run the full 3-season scrape and retrain with a cross-season holdout
 - [ ] `POST /api/predict` for online inference — the pickle already stores per-player feature profiles for this
 - [ ] GitHub Actions CI with API tests
 - [ ] Derive home/away from the game index instead of alphabetical order

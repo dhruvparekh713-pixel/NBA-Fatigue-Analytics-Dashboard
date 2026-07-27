@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import urllib.parse
-from typing import Any
+from typing import Any, Optional
 
 import numpy as np
 import pandas as pd
 from fastapi import APIRouter, HTTPException
 
 from api.schemas import (
+    AccuracySplit,
     CumulativeAccuracyResponse,
     CumulativePoint,
     DatesResponse,
@@ -331,32 +332,78 @@ def get_segment_accuracy():
 # GET /api/stats/overview
 # ---------------------------------------------------------------------------
 
+def _accuracy_split(label: str, sub: pd.DataFrame) -> Optional[AccuracySplit]:
+    """Accuracy and majority-class baseline for one slice of the data."""
+    n = len(sub)
+    if n == 0:
+        return None
+
+    acc = round(int(sub["prediction_correct"].sum()) / n * 100, 1)
+
+    # Majority class: always call whichever direction is more common. This is
+    # the right floor for a binary sign call — a coin flip understates it, and
+    # the old "always predict up" baseline (45%) scored *below* chance, which
+    # made the model's lift look roughly twice as large as it is.
+    dropped = (sub["actual_pts_dropoff"] < 0).mean()
+    baseline = round(max(dropped, 1 - dropped) * 100, 1)
+
+    return AccuracySplit(
+        label=label,
+        total_predictions=n,
+        accuracy_pct=acc,
+        baseline_pct=baseline,
+        lift_pct=round(acc - baseline, 1),
+    )
+
+
 @router.get("/stats/overview", response_model=OverviewResponse)
 def get_overview():
     df = _get_df()
-    total = len(df)
-    correct = int(df["prediction_correct"].sum())
-    overall_acc = round(correct / total * 100, 1) if total > 0 else 0.0
+    if df.empty:
+        raise HTTPException(404, "No data loaded")
 
-    # Baseline: predict no drop-off (sign = positive / no change)
-    baseline_correct = int((df["actual_pts_dropoff"] >= 0).sum())
-    baseline_acc = round(baseline_correct / total * 100, 1) if total > 0 else 0.0
-    improvement = round(overall_acc - baseline_acc, 1)
+    # Provenance split. Rows without the flag predate it and are treated as real.
+    synth_mask = df["is_synthetic"] if "is_synthetic" in df.columns else pd.Series(False, index=df.index)
+    real_df = df[~synth_mask]
+    synth_df = df[synth_mask]
 
-    # Segment accuracy for best/worst
-    segs = _compute_all_segment_accuracies(df)
+    real = _accuracy_split("Real backtest", real_df)
+    synthetic = _accuracy_split("Synthetic demo season", synth_df)
+    combined = _accuracy_split("All displayed rows", df)
+
+    # Headline reports real rows when we have them; the synthetic-only
+    # fallback dataset has no real rows to report.
+    headline = real or combined
+    headline_df = real_df if real is not None else df
+
+    # Best/worst segment, computed on the same rows as the headline.
+    segs = _compute_all_segment_accuracies(headline_df)
     best = max(segs, key=lambda s: s["acc"])["label"] if segs else "N/A"
     worst = min(segs, key=lambda s: s["acc"])["label"] if segs else "N/A"
 
+    if synthetic is not None:
+        note = (
+            f"Accuracy is measured on {headline.total_predictions:,} real backtest rows. "
+            f"The dashboard also displays {synthetic.total_predictions:,} synthetic player-games "
+            "generated to exercise the UI at full-season scale; their predictions are built as "
+            "(truth + noise), so that accuracy is an artifact of construction, not model skill."
+        )
+    else:
+        note = f"Accuracy is measured on {headline.total_predictions:,} real backtest rows."
+
     return OverviewResponse(
-        total_predictions=total,
-        overall_accuracy=overall_acc,
+        total_predictions=headline.total_predictions,
+        overall_accuracy=headline.accuracy_pct,
+        baseline_accuracy=headline.baseline_pct,
+        improvement_pct=headline.lift_pct,
         best_segment=best,
         worst_segment=worst,
         total_games=int(df["GAME_ID"].nunique()),
         total_players=int(df["PLAYER_NAME"].nunique()),
-        baseline_accuracy=baseline_acc,
-        improvement_pct=improvement,
+        real=headline,
+        synthetic=synthetic,
+        combined=combined,
+        data_note=note,
     )
 
 

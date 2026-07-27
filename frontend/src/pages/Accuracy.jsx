@@ -113,6 +113,7 @@ function DailyBarChart({ data }) {
 export default function Accuracy() {
   const [cumulative, setCumulative] = useState([])
   const [segments, setSegments] = useState(null)
+  const [overview, setOverview] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
@@ -120,17 +121,23 @@ export default function Accuracy() {
     Promise.all([
       api.getCumulativeAccuracy(),
       api.getSegmentAccuracy(),
+      api.getOverview(),
     ])
-      .then(([cumRes, segRes]) => {
+      .then(([cumRes, segRes, ovRes]) => {
         setCumulative(cumRes.data || [])
         setSegments(segRes.segments || {})
+        setOverview(ovRes)
       })
       .catch(e => setError(e.message))
       .finally(() => setLoading(false))
   }, [])
 
   const latest = cumulative[cumulative.length - 1]
-  const vsBaseline = latest ? (latest.cumulative_pct - 50).toFixed(1) : null
+  // Headline mirrors the Dashboard: real backtest rows against a
+  // majority-class baseline. The cumulative series below spans every
+  // displayed row, synthetic included — labelled as such.
+  const real = overview?.real
+  const vsBaseline = real ? (real.accuracy_pct - real.baseline_pct).toFixed(1) : null
 
   if (loading) {
     return (
@@ -161,34 +168,40 @@ export default function Accuracy() {
         <p className="text-stone-500 text-sm mt-1">How well the model called Q4 fatigue across the 2024–25 season.</p>
       </Reveal>
 
-      {/* Hero bento — large accuracy panel + two stacked tiles */}
-      {latest && (
+      {/* Hero bento — real-data accuracy + synthetic shown alongside */}
+      {real && (
         <Stagger className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <Item hover className="card hardwood-bg shadow-glow-ember p-6 lg:row-span-2 flex flex-col justify-between min-h-[200px] relative overflow-hidden">
             <GlassAccent variant="ring" className="w-40 h-40 -right-10 -top-10 absolute opacity-70" />
-            <p className="stat-label relative">Season Accuracy</p>
+            <p className="stat-label relative">Season Accuracy — Real Data</p>
             <div className="relative">
               <Float distance={5} duration={5}>
-                <HeroNumber value={latest.cumulative_pct} decimals={1} suffix="%" className="text-ember-bright text-7xl leading-none" />
+                <HeroNumber value={real.accuracy_pct} decimals={1} suffix="%" className="text-ember-bright text-7xl leading-none" />
               </Float>
               <HandUnderline className="mt-1 -ml-1" width={190} />
             </div>
             {vsBaseline !== null && (
               <p className="text-sm text-stone-400 relative">
                 <span className={Number(vsBaseline) >= 0 ? 'text-emerald-400 font-semibold' : 'text-ember-bright font-semibold'}>
-                  {Number(vsBaseline) >= 0 ? '+' : ''}{vsBaseline}%
+                  {Number(vsBaseline) >= 0 ? '+' : ''}{vsBaseline} pts
                 </span>
-                {' '}edge over the 50% coin-flip baseline
+                {' '}over the {real.baseline_pct}% majority-class baseline · {real.total_predictions.toLocaleString()} real player-games
               </p>
             )}
           </Item>
           <Item hover className="card p-5 flex flex-col justify-center">
-            <p className="stat-label mb-2">Total Correct</p>
-            <HeroNumber value={latest.cumulative_correct} className="text-emerald-400 text-4xl" />
+            <p className="stat-label mb-2">Real Backtest Rows</p>
+            <HeroNumber value={real.total_predictions} className="text-emerald-400 text-4xl" />
+            <p className="text-xs text-stone-500 mt-1">Oct 22–30, 2024 — the measured sample</p>
           </Item>
           <Item hover className="card p-5 flex flex-col justify-center">
-            <p className="stat-label mb-2">Total Predictions</p>
-            <HeroNumber value={latest.cumulative_total} className="text-stone-200 text-4xl" />
+            <p className="stat-label mb-2">Synthetic Demo Rows</p>
+            <HeroNumber value={overview?.synthetic?.total_predictions ?? 0} className="text-stone-400 text-4xl" />
+            <p className="text-xs text-stone-500 mt-1">
+              {overview?.synthetic
+                ? `${overview.synthetic.accuracy_pct}% "accuracy" — an artifact of construction`
+                : 'none'}
+            </p>
           </Item>
         </Stagger>
       )}
@@ -199,7 +212,9 @@ export default function Accuracy() {
       <Reveal className="card p-6" y={32}>
         <h2 className="text-xl font-bold text-white mb-1 editorial">Cumulative Accuracy — Full Season</h2>
         <p className="text-xs text-stone-500 mb-5">
-          Model accuracy stabilizes as sample size grows. Gradient fill shows confidence building over time.
+          Spans every displayed row, <span className="text-stone-400">synthetic included</span> — so it trends toward
+          the demo-data rate, not the {real ? `${real.accuracy_pct}%` : 'real'} measured on real games. Shown to
+          illustrate how accuracy stabilizes as sample size grows.
         </p>
         <AccuracyChart data={cumulative} />
       </Reveal>

@@ -102,15 +102,39 @@ class SegmentsResponse(BaseModel):
     segments: dict[str, list[SegmentStat]]
 
 
+class AccuracySplit(BaseModel):
+    """Accuracy for one slice of the data, with its own honest baseline.
+
+    `baseline_pct` is the majority-class rate — always predicting whichever
+    direction is more common. That is the correct floor for a binary
+    directional call; a coin flip or an "always predict up" baseline both
+    understate it and inflate the apparent lift.
+    """
+    label: str
+    total_predictions: int
+    accuracy_pct: float
+    baseline_pct: float
+    lift_pct: float
+
+
 class OverviewResponse(BaseModel):
+    # Headline fields describe REAL backtest rows only.
     total_predictions: int
     overall_accuracy: float
     best_segment: str
     worst_segment: str
-    total_games: int
-    total_players: int
     baseline_accuracy: float
     improvement_pct: float
+
+    # Catalog counts describe everything browsable in the UI (real + synthetic).
+    total_games: int
+    total_players: int
+
+    # Full provenance breakdown.
+    real: AccuracySplit
+    synthetic: Optional[AccuracySplit] = None
+    combined: AccuracySplit
+    data_note: str
 
 
 class DatesResponse(BaseModel):
