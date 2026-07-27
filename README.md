@@ -2,6 +2,8 @@
 
 A full-stack web app that backtests an XGBoost model predicting fourth-quarter performance drop-off in the NBA. Built by Dhruv Parekh — CMU ECE '28.
 
+[![CI](https://github.com/dhruvparekh713-pixel/NBA-Fatigue-Analytics-Dashboard/actions/workflows/ci.yml/badge.svg)](https://github.com/dhruvparekh713-pixel/NBA-Fatigue-Analytics-Dashboard/actions/workflows/ci.yml)
+
 **Stack:** FastAPI + pandas (Railway) · React + Vite + Tailwind + Recharts (Vercel)
 
 <!-- TODO: add live demo link -->
@@ -58,7 +60,11 @@ FastAPI  (Railway)                 ← aggregations computed live per request
 React SPA  (Vercel)
 ```
 
-The API *does* compute in real time — groupbys, segment splits, and cumulative accuracy run in pandas on every request against an in-memory DataFrame. What it does not do is run the model. Adding an online inference endpoint is the top roadmap item.
+Most routes compute in real time but don't run the model — groupbys, segment splits, and cumulative accuracy execute in pandas on every request against an in-memory DataFrame, reading predictions that were scored offline.
+
+**`POST /api/predict` is the exception**: it loads the XGBoost artifact at startup and evaluates it *in the request path*, assembling the feature vector from the player's stored profile plus whatever live context the caller supplies. It returns identical numbers to `ml/predict.py` for identical input — same feature assembly, same model, verified in the test suite.
+
+So the system does both: **batch scoring** for the historical backtest the dashboard renders, and **online inference** for ad-hoc what-if queries.
 
 ## Tech stack
 
@@ -132,9 +138,37 @@ All routes are prefixed `/api`.
 | `GET /players/search?q=` | typeahead name search |
 | `GET /accuracy/cumulative` | daily and cumulative accuracy series |
 | `GET /accuracy/segments` | accuracy split by role, rest, age, minutes load |
-| `GET /stats/overview` | headline totals and baseline comparison |
+| `GET /stats/overview` | headline totals, provenance splits, baseline comparison |
+| `POST /predict` | **online inference** — score one player entering Q4 |
+| `GET /predict/status` | whether the model loaded, and its metadata |
 
 Responses are typed with Pydantic models in [`backend/api/schemas.py`](backend/api/schemas.py), so the OpenAPI docs at `/docs` are generated and accurate.
+
+### Online inference
+
+```bash
+curl -X POST localhost:8000/api/predict -H 'Content-Type: application/json' \
+  -d '{"player_name":"LeBron James","minutes_so_far":32,"pace":98,"rest_days":1}'
+```
+
+```jsonc
+{
+  "player_name": "LeBron James",
+  "matched_profile": "lebron james",
+  "used_league_medians": false,      // true → player unknown, league medians used
+  "fatigue_risk_score": 87.6,
+  "predictions": [
+    { "target": "q4_pts_dropoff",    "label": "Points per minute",     "value": 0.127 },
+    { "target": "q4_fg_pct_dropoff", "label": "Field goal percentage", "value": -0.0176 },
+    { "target": "q4_ast_dropoff",    "label": "Assists per minute",    "value": 0.0186 },
+    { "target": "q4_to_surplus",     "label": "Turnovers per minute",  "value": -0.0045 }
+  ],
+  "features_used": { "cumulative_minutes_q1q3": 32.0, "...": 0.0 },
+  "model_note": "Model trained on 629 player-games..."
+}
+```
+
+Unknown players fall back to league-median features rather than 404ing, and `used_league_medians` flags it so callers can tell a player-specific estimate from a generic one. Inference degrades gracefully — if `xgboost` or the artifact is missing, every other route still works and this one returns 503.
 
 ## Data
 
@@ -159,7 +193,7 @@ Documented rather than hidden — these are the honest state of the project.
 5. **The fatigue score is not calibrated or validated.** On real data its correlation with actual Q4 drop-off is **0.032**, and the ordering runs backwards — the "High" band shows a slightly *positive* mean change. Both denominators are also mis-scaled: `36` assumes a player never leaves the floor in Q1–Q3 (real median is 21.8 min), and `7` assumes a rest range the data never exercises (real values are only 0–3).
 6. ~~**Two inconsistent baselines.**~~ **Fixed.** The API previously computed an "always predict up" baseline (45.0%) while the Accuracy page hardcoded a 50% coin flip. Both now use majority class (**55.0%**) — the correct floor for a binary directional call. The old baseline scored *below* chance, which roughly doubled the apparent lift.
 7. **Home/away teams are guessed.** [`get_games`](backend/api/routes.py#L60) sorts the two team abbreviations alphabetically and labels the first as home, so the matchup orientation is frequently wrong.
-8. **No CI, and the API is untested.** [`ml/`](ml/) ships seven verifier scripts — four run offline against the cached data and pass (`test_phase2`, `test_phase2_verify`, `test_phase3_verify`, `test_phase4_verify`); three hit the live NBA API and are unsuitable for automation. `test_phase1` currently **fails**: per-quarter box scores don't reconcile with full-game totals (PTS 14/21, MIN 9/21 on the sample), a boundary-attribution quirk in the NBA API's `range_type=2` mode that [`scraper.py`](ml/src/scraper.py#L64-L69) partially compensates for. Nothing covers the FastAPI layer.
+8. **`test_phase1` fails — per-quarter data doesn't reconcile.** Summing Q1–Q4 box scores doesn't reproduce full-game totals (PTS 14/21, MIN 9/21 on the sample), a boundary-attribution quirk in the NBA Stats API's `range_type=2` mode that [`scraper.py`](ml/src/scraper.py#L64-L69) only partially compensates for. Since features are built from these per-quarter splits, some inputs are mismeasured. This is the most likely data-quality contributor to weak model performance and is not yet resolved. `test_phase1`, `test_endpoint_params` and `test_fga_mismatch` all require live API access and so are excluded from CI.
 
 ## Local development
 
@@ -195,6 +229,7 @@ Both deploy automatically on push to `main`.
 - [x] Switch to a majority-class baseline and use it consistently across API and frontend
 - [x] Commit the scraping and training pipeline (now in [`ml/`](ml/))
 - [ ] Run the full 3-season scrape and retrain with a cross-season holdout
-- [ ] `POST /api/predict` for online inference — the pickle already stores per-player feature profiles for this
-- [ ] GitHub Actions CI with API tests
+- [x] `POST /api/predict` for online inference
+- [x] GitHub Actions CI — API tests, ML verifiers, frontend build
+- [ ] Resolve the per-quarter reconciliation failure in `test_phase1`
 - [ ] Derive home/away from the game index instead of alphabetical order
