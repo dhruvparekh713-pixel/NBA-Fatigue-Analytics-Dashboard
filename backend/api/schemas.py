@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from typing import Any, Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class GameSummary(BaseModel):
@@ -139,3 +139,36 @@ class OverviewResponse(BaseModel):
 
 class DatesResponse(BaseModel):
     dates: list[str]
+
+
+class PredictRequest(BaseModel):
+    """Live context for one player entering the fourth quarter."""
+    player_name: str = Field(..., min_length=1, examples=["LeBron James"])
+    minutes_so_far: float = Field(..., ge=0, le=48, description="Minutes played through Q3")
+    pace: float = Field(100.0, ge=60, le=140, description="Possessions per 48 min")
+    rest_days: float = Field(1.0, ge=0, le=30, description="Days since last game; 0 = back-to-back")
+    score_diff: Optional[float] = Field(
+        None, ge=-80, le=80,
+        description="Score margin entering Q4. Omit to use the player's typical margin.",
+    )
+    is_home: Optional[bool] = None
+
+
+class PredictedTarget(BaseModel):
+    target: str
+    label: str
+    value: float
+
+
+class PredictResponse(BaseModel):
+    player_name: str
+    matched_profile: Optional[str] = None
+    used_league_medians: bool
+    fatigue_risk_score: float
+    predictions: list[PredictedTarget]
+    features_used: dict[str, float]
+    model_note: str
+
+    # `model_` is a protected namespace in Pydantic v2; this field is
+    # deliberately named for the reader, so opt out of the warning.
+    model_config = {"protected_namespaces": ()}

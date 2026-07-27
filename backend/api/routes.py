@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 from fastapi import APIRouter, HTTPException
 
+import predictor
 from api.schemas import (
     AccuracySplit,
     CumulativeAccuracyResponse,
@@ -20,6 +21,9 @@ from api.schemas import (
     PlayerGame,
     PlayerPrediction,
     PlayerProfileResponse,
+    PredictRequest,
+    PredictResponse,
+    PredictedTarget,
     PredictionSummary,
     PredictionsResponse,
     SegmentStat,
@@ -326,6 +330,79 @@ def get_segment_accuracy():
         "by_age": by_age,
         "by_minutes": by_minutes,
     })
+
+
+# ---------------------------------------------------------------------------
+# POST /api/predict  — online inference
+# ---------------------------------------------------------------------------
+
+@router.post("/predict", response_model=PredictResponse)
+def predict_q4(req: PredictRequest):
+    """Score one player entering Q4 by running the model in the request path.
+
+    Distinct from every other route here: the rest of the API reads
+    predictions that were batch-scored offline into Parquet, whereas this
+    one loads the XGBoost artifact and evaluates it live.
+    """
+    if not predictor.is_ready():
+        raise HTTPException(
+            503,
+            f"Online inference unavailable: {predictor.status().get('error', 'model not loaded')}",
+        )
+
+    try:
+        result = predictor.predict(
+            player_name=req.player_name,
+            minutes_so_far=req.minutes_so_far,
+            pace=req.pace,
+            rest_days=req.rest_days,
+            score_diff=req.score_diff,
+            is_home=req.is_home,
+        )
+    except Exception as exc:
+        raise HTTPException(500, f"Prediction failed: {exc}")
+
+    targets = [
+        PredictedTarget(
+            target=name,
+            label=predictor.TARGET_LABELS.get(name, name),
+            value=value,
+        )
+        for name, value in result["predictions"].items()
+    ]
+
+    # Same 60/40 heuristic the dashboard displays, applied to live input so
+    # the number is comparable to the ones in the game tables.
+    minutes_norm = min(max(req.minutes_so_far, 0.0), 36.0) / 36.0 * 60.0
+    rest_penalty = (7.0 - min(req.rest_days, 7.0)) / 7.0 * 40.0
+    fatigue = round(min(max(minutes_norm + rest_penalty, 0.0), 100.0), 1)
+
+    st = predictor.status()
+    note = (
+        f"Model trained on {st.get('n_train')} player-games from "
+        f"{st.get('train_seasons')}. Negative values indicate a predicted decline in Q4."
+    )
+    if result["used_league_medians"]:
+        note += (
+            f" '{req.player_name}' is not in the training data — league-median "
+            "features were used, so treat this as a generic estimate."
+        )
+
+    return PredictResponse(
+        player_name=result["player_name"],
+        matched_profile=result["matched_profile"],
+        used_league_medians=result["used_league_medians"],
+        fatigue_risk_score=fatigue,
+        predictions=targets,
+        features_used=result["features_used"],
+        model_note=note,
+    )
+
+
+@router.get("/predict/status")
+def predict_status():
+    """Whether online inference is available, and what the model is."""
+    return predictor.status()
 
 
 # ---------------------------------------------------------------------------

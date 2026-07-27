@@ -1,0 +1,84 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend API tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements-dev.txt
+
+      - name: Install dependencies
+        run: pip install -r backend/requirements-dev.txt
+
+      - name: Run pytest
+        working-directory: backend
+        run: python -m pytest tests/ -v
+
+  ml:
+    name: ML pipeline verifiers
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: ml/requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r ml/requirements.txt
+
+      # Only the verifiers that run offline against the committed 59-game
+      # cache. test_phase1, test_endpoint_params and test_fga_mismatch all
+      # call the live NBA Stats API — too slow and too flaky for CI.
+      - name: Feature engineering (phase 2)
+        working-directory: ml
+        run: |
+          python test_phase2.py
+          python test_phase2_verify.py
+
+      - name: Model must beat the naive baseline (phase 3)
+        working-directory: ml
+        run: python test_phase3_verify.py
+
+      - name: Backtest integrity (phase 4)
+        working-directory: ml
+        run: python test_phase4_verify.py
+
+  frontend:
+    name: Frontend build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build
+        working-directory: frontend
+        run: npm run build
