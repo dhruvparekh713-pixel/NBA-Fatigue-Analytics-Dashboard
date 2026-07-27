@@ -13,6 +13,10 @@ A full-stack web app that backtests an XGBoost model predicting fourth-quarter p
 - **Accuracy Tracker** — season-long cumulative accuracy chart plus segment breakdowns (role, rest, age, minutes load)
 - **Player Profile** — search any player for a season fatigue timeline, highest-fatigue games, and a sortable game log
 
+## Screenshots
+
+Deployment screenshots of all three pages are in [Nba-Dashboard-Deployment-Pictures](./Nba-Dashboard-Deployment-Pictures).
+
 ## Results
 
 Measured on the **787 real player-games** in the backtest (2024-25 season, Oct 22–30):
