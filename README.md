@@ -29,6 +29,7 @@ Measured on the **787 real player-games** in the backtest (2024-25 season, Oct 2
 | Directional accuracy (Synthetic Data) | **81.2%**|
 | Majority-class baseline (always predict the more common direction) | 55.0% |
 | Lift | **+8.2 pts** |
+| Synthetic Lift | **+26.2 pts** |
 
 Regression performance on the held-out split (n = 158) is much weaker — the model explains almost none of the variance:
 
